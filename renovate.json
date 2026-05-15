@@ -103,6 +103,7 @@
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
+      "minimumReleaseAge": "21 days",
       "automerge": false
     }
   ]
