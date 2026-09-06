@@ -63,7 +63,11 @@
   {{- end -}}
   {{- range $groupName, $groupVal := ($Values.defaultRules.groups | default dict) -}}
     {{- $gc := dict -}}
-    {{- if or (eq (index $groupVal "enabled") false) (eq (index $groupVal "create") false) -}}
+    {{- $groupEnabled := index $groupVal "enabled" -}}
+    {{- if kindIs "string" $groupEnabled -}}
+      {{- $groupEnabled = eq (tpl $groupEnabled $) "true" -}}
+    {{- end -}}
+    {{- if or (eq $groupEnabled false) (eq (index $groupVal "create") false) -}}
       {{- $gc = set $gc "enabled" false -}}
     {{- end -}}
     {{- range $k := list "spec" "jobNamespaces" "rule" "alerting" "recording" -}}

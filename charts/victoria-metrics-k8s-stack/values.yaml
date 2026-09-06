@@ -273,6 +273,7 @@ defaultRules:
     #     labels:
     #       severity: critical
   # -- Rule group properties. Keys must match upstream group names exactly.
+  # `enabled` may be a template expression (e.g. `{{ .Values.kubeScheduler.enabled }}`), rendered before use.
   groups:
     etcd:
       # -- Enable/disable rule group
@@ -327,20 +328,25 @@ defaultRules:
       rules: {}
     kube-apiserver-burnrate.rules:
       rules: {}
+      enabled: '{{ .Values.kubeApiServer.enabled }}'
     kube-apiserver-histogram.rules:
       rules: {}
+      enabled: '{{ .Values.kubeApiServer.enabled }}'
     kube-apiserver-slos:
       rules: {}
+      enabled: '{{ .Values.kubeApiServer.enabled }}'
     kube-prometheus-general.rules:
       rules: {}
     kube-prometheus-node-recording.rules:
       rules: {}
     kube-scheduler.rules:
       rules: {}
+      enabled: '{{ .Values.kubeScheduler.enabled }}'
     kube-state-metrics:
       rules: {}
     kubelet.rules:
       rules: {}
+      enabled: '{{ .Values.kubelet.enabled }}'
     kubernetes-apps:
       rules: {}
       labelRewrites:
@@ -359,12 +365,16 @@ defaultRules:
       rules: {}
     kubernetes-system-apiserver:
       rules: {}
+      enabled: '{{ .Values.kubeApiServer.enabled }}'
     kubernetes-system-controller-manager:
       rules: {}
+      enabled: '{{ .Values.kubeControllerManager.enabled }}'
     kubernetes-system-kubelet:
       rules: {}
+      enabled: '{{ .Values.kubelet.enabled }}'
     kubernetes-system-scheduler:
       rules: {}
+      enabled: '{{ .Values.kubeScheduler.enabled }}'
     node-exporter:
       rules: {}
     node-exporter.rules:
