@@ -24,11 +24,11 @@ global:
     # renovate: image=victoriametrics/victoria-logs
     logs: v1.52.0
     # renovate: image=victoriametrics/victoria-traces
-    traces: v0.9.4
+    traces: v0.10.0
     # renovate: image=victoriametrics/vmanomaly
     anomaly: v1.30.4
     # renovate: image=prom/alertmanager
-    alertmanager: v0.32.1
+    alertmanager: v0.34.0
 
 # -- Override chart name
 nameOverride: ""
