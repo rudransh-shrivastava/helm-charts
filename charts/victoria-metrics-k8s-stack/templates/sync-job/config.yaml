@@ -69,6 +69,9 @@
     {{- range $k := list "spec" "jobNamespaces" "rule" "alerting" "recording" -}}
       {{- with index $groupVal $k -}}{{- $gc = set $gc $k . -}}{{- end -}}
     {{- end -}}
+    {{- with index $groupVal "labelRewrites" -}}
+      {{- $gc = set $gc "labelRewrites" (fromYaml (tpl (toYaml .) $)) -}}
+    {{- end -}}
     {{- if hasKey $groupVal "extraGroupByLabels" -}}
       {{- $gc = set $gc "extraGroupByLabels" (index $groupVal "extraGroupByLabels") -}}
     {{- else if hasKey $groupVal "additionalGroupByLabels" -}}
@@ -147,6 +150,9 @@ data:
         {{- end }}
         {{- with $Values.defaultRules.jobNamespaces }}
         jobNamespaces: {{ toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $Values.defaultRules.labelRewrites }}
+        labelRewrites: {{ tpl (toYaml .) $ | nindent 10 }}
         {{- end }}
       {{- if $commonRules }}
       rules: {{ toYaml $commonRules | nindent 8 }}

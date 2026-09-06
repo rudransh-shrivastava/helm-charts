@@ -226,10 +226,15 @@ defaultRules:
   # -- Labels, which are used for grouping results of the queries. Note that these labels are joined with `.Values.global.clusterLabel`
   extraGroupByLabels: []
   enabled: true
-  # -- Inject namespace=~"<value>" filter into metric selectors for metrics scraped by the given job.
+  # -- Deprecated: use labelRewrites instead (e.g. `labelRewrites.namespace: {match: <job>, value: <value>}`).
+  # Inject namespace=~"<value>" filter into metric selectors for metrics scraped by the given job.
   # Merged with per-group jobNamespaces (per-group wins on conflict).
   # Only use for jobs whose metrics are always namespace-scoped.
   jobNamespaces: {}
+  # -- Each entry rewrites label `name` (defaults to the map key) to `value` (a regexp) for
+  # selectors whose job is `match`. `value` may be a template expression, rendered before use.
+  # Merged with per-group labelRewrites by key (per-group wins on conflict).
+  labelRewrites: {}
 
   # -- Common properties for VMRule groups
   group:
@@ -291,6 +296,13 @@ defaultRules:
       #     dashboard: https://example.com/dashboard/1
     alertmanager.rules:
       rules: {}
+      labelRewrites:
+        job:
+          match: alertmanager-main
+          value: vmalertmanager-.*
+        namespace:
+          match: alertmanager-main
+          value: '{{ include "vm-k8s-stack.alertmanager.namespace" $ }}'
     general.rules:
       rules: {}
     k8s.rules.container_cpu_limits:
@@ -331,14 +343,18 @@ defaultRules:
       rules: {}
     kubernetes-apps:
       rules: {}
-      jobNamespaces:
-        kube-state-metrics: ".*"
+      labelRewrites:
+        namespace:
+          match: kube-state-metrics
+          value: ".*"
     kubernetes-resources:
       rules: {}
     kubernetes-storage:
       rules: {}
-      jobNamespaces:
-        kubelet: ".*"
+      labelRewrites:
+        namespace:
+          match: kubelet
+          value: ".*"
     kubernetes-system:
       rules: {}
     kubernetes-system-apiserver:

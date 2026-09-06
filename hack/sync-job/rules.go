@@ -129,6 +129,7 @@ func parseRuleGroups(raw []byte, srcURL string) ([]ruleGroup, error) {
 func patchRuleGroup(g *ruleGroup, cfg *rulesConfig, common commonConfig) {
 	additionalLabels := cfg.Common.ExtraGroupByLabels
 	jobNamespaces := cfg.Common.JobNamespaces
+	labelRewrites := cfg.Common.LabelRewrites
 	if gc, ok := lookupGroup(cfg.Groups, g.Name); ok {
 		if gc.ExtraGroupByLabels != nil {
 			additionalLabels = gc.ExtraGroupByLabels
@@ -139,11 +140,17 @@ func patchRuleGroup(g *ruleGroup, cfg *rulesConfig, common commonConfig) {
 			maps.Copy(merged, gc.JobNamespaces)
 			jobNamespaces = merged
 		}
+		if len(gc.LabelRewrites) > 0 {
+			merged := make(map[string]labelRewrite, len(labelRewrites)+len(gc.LabelRewrites))
+			maps.Copy(merged, labelRewrites)
+			maps.Copy(merged, gc.LabelRewrites)
+			labelRewrites = merged
+		}
 	}
 	for i := range g.Rules {
 		r := &g.Rules[i]
 		patchRuleAnnotations(r, cfg, common.ClusterLabel)
-		r.Expr = patchRuleExpr(r.Expr, additionalLabels, common, jobNamespaces)
+		r.Expr = patchRuleExpr(r.Expr, additionalLabels, common, jobNamespaces, labelRewrites)
 		applyRuleDefaults(r, cfg, g.Name)
 	}
 }
@@ -261,7 +268,7 @@ func patchRuleAnnotations(r *rule, cfg *rulesConfig, clusterLabel string) {
 	}
 }
 
-func patchRuleExpr(expr string, extraGroupByLabels []string, common commonConfig, jobNamespaces map[string]string) string {
+func patchRuleExpr(expr string, extraGroupByLabels []string, common commonConfig, jobNamespaces map[string]string, labelRewrites map[string]labelRewrite) string {
 	if expr == "" {
 		return expr
 	}
@@ -314,32 +321,53 @@ func patchRuleExpr(expr string, extraGroupByLabels []string, common commonConfig
 				t.Modifier.Args = append(t.Modifier.Args, allGroupLabels...)
 			}
 		case *metricsql.MetricExpr:
-			if len(jobNamespaces) == 0 {
+			if len(jobNamespaces) == 0 && len(labelRewrites) == 0 {
 				return
 			}
 			for i, group := range t.LabelFilterss {
-				jobValue, hasNamespace := "", false
+				jobValue, hasJob := "", false
 				for _, f := range group {
-					switch f.Label {
-					case "job":
-						if !f.IsNegative && !f.IsRegexp {
-							jobValue = f.Value
-						}
-					case "namespace":
-						hasNamespace = true
+					if f.Label == "job" && !f.IsNegative && !f.IsRegexp {
+						jobValue, hasJob = f.Value, true
 					}
 				}
-				if ns, ok := jobNamespaces[jobValue]; ok && !hasNamespace {
-					t.LabelFilterss[i] = append(group, metricsql.LabelFilter{
-						Label:    "namespace",
-						Value:    ns,
-						IsRegexp: true,
-					})
+				if !hasJob {
+					continue
 				}
+				if ns, ok := jobNamespaces[jobValue]; ok {
+					group = setLabelFilterValue(group, "namespace", ns)
+				}
+				for key, rw := range labelRewrites {
+					name := rw.Name
+					if name == "" {
+						name = key
+					}
+					if rw.Match == jobValue {
+						group = setLabelFilterValue(group, name, rw.Value)
+					}
+				}
+				t.LabelFilterss[i] = group
 			}
 		}
 	})
 	return string(e.AppendString(nil))
+}
+
+func setLabelFilterValue(group []metricsql.LabelFilter, label, newValue string) []metricsql.LabelFilter {
+	for i := range group {
+		if group[i].Label == label && !group[i].IsNegative && !group[i].IsRegexp {
+			if group[i].Value != newValue {
+				group[i].Value = newValue
+				group[i].IsRegexp = true
+			}
+			return group
+		}
+	}
+	return append(group, metricsql.LabelFilter{
+		Label:    label,
+		Value:    newValue,
+		IsRegexp: true,
+	})
 }
 
 const maxResourceNameLen = 253
